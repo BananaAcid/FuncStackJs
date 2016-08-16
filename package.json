@@ -1,0 +1,34 @@
+{
+  "name": "funcstack",
+  "description": "Starts different tasks (functions), optionally asyncronous, and monitors the total progress",
+  "keywords": [
+    "stack",
+    "queue",
+    "async"
+  ],
+  "version": "1.0.0",
+  "author": "Nabil Redmann <repo+js@bananaacid.de> (http://nabil-redmann.de)",
+  "contributors": [
+  ],
+  "license": "MIT",
+  "main": "./FunStack.js",
+  "repository": {
+    "type": "git",
+    "url": "git://github.com/BananaAcid/funcstack.git"
+  },
+  "bugs": "https://github.com/BananaAcid/funcstack/issues",
+  "homepage": "https://github.com/BananaAcid/funcstack",
+  "dependencies": {
+  },
+  "devDependencies": {
+    "jsdoc": "^3.4.0	",
+    "rimraf": "^2.5.4"
+  },
+  "engines": {
+    "node": ">=0.10.0"
+  },
+  "scripts": {
+    "doc": "rimraf out && jsdoc -c jsdoc.config.json --tutorials tests -R README.md FuncStack.js",
+    "devdoc": "rimraf out && jsdoc --access all -c jsdoc.config.json --tutorials tests -R README.md FuncStack.js"
+  }
+}
