@@ -16,6 +16,50 @@
 
 @copyright  use in your own code, but keep the copyright (except you modify it, then reference me)
 
+# Documentation
+You should really generate the jsDoc based documentation: go to the path where this lib is, and use
+`npm run doc` or `npm run devdoc` (with overwritable internal methods).
+If you have trouble as windows user, use the included `jsdoc_generate.cmd` (but requires a reachable jsDoc installation, `npm install -g jsdoc`) .
+
+# Example
+```javascript
+// init
+var s = new FuncStack({
+    debug:false,
+    onProgress: function defaultHandlerExample(statusObj, curFn) {
+        console.log('another one finished, still missing: ', statusObj.count.left);
+
+        if (curFn.x )
+            console.log('Fn has an extra value (x):', curFn.x);
+    }
+})
+
+// async execution
+.add(function task1(){console.log('==1')})
+// sync execution
+.add(function task2(){console.log('==2 sync')}, FuncStack.ENUM_QUEUEMODE.DEFER)
+// failing one
+.add(function task3(){console.log('==3 err'); throw({msg: 'this is an error'});})
+// transporting value to onProgress
+.add(function task4(){console.log('==4'); this.x = 1;})
+// ES6
+.add( () => console.log('==5') )
+// async execution + async callback
+.add(function task6(fsData) {
+    var done = fsData.preventDefault();
+    console.log('==6 starting...');
+    setTimeout(function() {
+        console.log('==6 finished');
+        done('success');
+    }, 2000);
+})
+// with a binded context
+.add(function task7(){console.log('=='+this.val);}.bind({val: 7}))
+
+// start consuming
+.start();
+```
+
 # Note
 
 ## a task function has:
