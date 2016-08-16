@@ -1,5 +1,5 @@
 {
-  "name": "funcstack",
+  "name": "FuncStackJs",
   "description": "Starts different tasks (functions), optionally asyncronous, and monitors the total progress",
   "keywords": [
     "stack",
@@ -14,10 +14,10 @@
   "main": "./FunStack.js",
   "repository": {
     "type": "git",
-    "url": "git://github.com/BananaAcid/funcstack.git"
+    "url": "git://github.com/BananaAcid/FuncStackJs.git"
   },
-  "bugs": "https://github.com/BananaAcid/funcstack/issues",
-  "homepage": "https://github.com/BananaAcid/funcstack",
+  "bugs": "https://github.com/BananaAcid/FuncStackJs/issues",
+  "homepage": "https://github.com/BananaAcid/FuncStackJs",
   "dependencies": {
   },
   "devDependencies": {
