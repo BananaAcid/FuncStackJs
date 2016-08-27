@@ -2,6 +2,8 @@
 
 *Starts different tasks (functions), optionally asyncronous, and monitors the total progress*
 
+__For any Browser and any NodeJS version.__
+
 # Summary
   The stack allows to execute a a bunch of tasks async, then wait for their completion to trigger another one.
   A task may use a resolve function, needed for AJAX requests and alike.
