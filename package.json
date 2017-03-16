@@ -11,7 +11,7 @@
   "contributors": [
   ],
   "license": "MIT",
-  "main": "./FunStack.js",
+  "main": "./FuncStack.js",
   "repository": {
     "type": "git",
     "url": "git://github.com/BananaAcid/FuncStackJs.git"
