@@ -12,11 +12,14 @@ __For any Browser and any NodeJS version.__
 
 @author  Nabil Redmann <repo+js@bananaacid.de>
 
-@version 1.0.0
+@version 1.0.2
 
 @licence MIT
 
 @copyright  use in your own code, but keep the copyright (except you modify it, then reference me)
+
+# Change
+1.0.2 Fixed package info to make it requireable/importable by package name in NodeJS.
 
 # Documentation
 You should really generate the jsDoc based documentation: go to the path where this lib is, and use
@@ -70,13 +73,13 @@ signature param: [data]
     property keys: [fnCount, queueMode, funcStackReference, fn]
     property methods: [preventDefault()]
         preventDefault():                           (using this, return will be stopped and you must call resolveFn(status, result) to trigger task as proccessed -- use for ajax requests)
-            returns: resolveFn() 
+            returns: resolveFn()
                 signature param: [status, result]   (status ['error', 'success', 'canceled'] in FuncStack.ENUM_STATUS.*)
                 signature overloaded: [FuncStack.StatusNotificationObject]
                     signature param: [status, result] (same as resolveFn)
 return: any                                         (triggers task as proccessed -> stack: done)
 throw: error                                        (triggers task as proccessed -> stack: error)
-```` 
+````
 
 ## onProgress statusObj has:
 ```
@@ -116,7 +119,7 @@ options = {
 
 
 ## about async and defer:
-- async will start them in order as fast as possible without waiting for completion, 
+- async will start them in order as fast as possible without waiting for completion,
 - defer will wait for previous defer task or all previous async tasks to start the new one
 
 
@@ -143,7 +146,7 @@ in onProgress(statusObj, curFn) you can:
 within your timed function, you way use `myFuncStack.get(this).stack == FuncStack.ENUM_STATE.CANCELED` to check,
 if it has been moved to the error stack - since it has not returned yet / called done(), there is no other reason
 
-also: you could check `myFuncStack.isStopped == true` -> that tells, if tasks are currently consumed - but this task 
+also: you could check `myFuncStack.isStopped == true` -> that tells, if tasks are currently consumed - but this task
 should finish anyway.
 
 

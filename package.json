@@ -1,17 +1,17 @@
 {
-  "name": "FuncStackJs",
+  "name": "funcstackjs",
   "description": "Starts different tasks (functions), optionally asyncronous, and monitors the total progress",
   "keywords": [
     "stack",
     "queue",
     "async"
   ],
-  "version": "1.0.1",
+  "version": "1.0.2",
   "author": "Nabil Redmann <repo+js@bananaacid.de> (http://nabil-redmann.de)",
   "contributors": [
   ],
   "license": "MIT",
-  "main": "./FuncStack.js",
+  "main": "index.js",
   "repository": {
     "type": "git",
     "url": "git://github.com/BananaAcid/FuncStackJs.git"
