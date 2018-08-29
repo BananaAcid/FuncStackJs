@@ -12,13 +12,12 @@ __For any Browser and any NodeJS version.__
 
 @author  Nabil Redmann <repo+js@bananaacid.de>
 
-@version 1.0.2
-
 @licence MIT
 
 @copyright  use in your own code, but keep the copyright (except you modify it, then reference me)
 
 # Change
+1.0.3 Fixed readme about `.count`; actually being `.counts`, added more readme infos.
 1.0.2 Fixed package info to make it requireable/importable by package name in NodeJS.
 
 # Documentation
@@ -32,7 +31,7 @@ If you have trouble as windows user, use the included `jsdoc_generate.cmd` (but 
 var s = new FuncStack({
     debug:false,
     onProgress: function defaultHandlerExample(statusObj, curFn) {
-        console.log('another one finished, still missing: ', statusObj.count.left);
+        console.log('another one finished, still missing: ', statusObj.counts.left);
 
         if (curFn.x )
             console.log('Fn has an extra value (x):', curFn.x);
@@ -50,10 +49,11 @@ var s = new FuncStack({
 // ES6
 .add( () => console.log('==5') )
 // async execution + async callback
-.add(function task6(fsData) {
-    var done = fsData.preventDefault();
+.add(function task6(data) {
+    var done = data.preventDefault();
     console.log('==6 starting...');
-    setTimeout(function() {
+    // simulate some async callback based function
+    setTimeout(function() { 
         console.log('==6 finished');
         done('success');
     }, 2000);
@@ -65,9 +65,40 @@ var s = new FuncStack({
 .start();
 ```
 
+# ES6 awaitable
+```javascript
+asnyc () => {
+    
+    let resultStatusObj = await new Promise(resolve => new FuncStack({onCompleted: resolve}));
+
+    if (resultStatusObj.status == 'success')
+        console.info('all fns done');
+    else
+        console.error(`some fn triggered an error (${ resultStatusObj.data.error.length }), but all rest completed (${ resultStatusObj.data.done.length })`);
+}
+```
+
 # Note
 
-## a task function has:
+## a task function is declared like this:
+```javascript
+function(data){ ... }
+```
+
+`data` gets infos about the current function/FuncStack state:
+```
+.fnCount
+.queueMode
+.funcStackReference
+.fn
+.preventDefault()  -> see 'resolve a ajax based task manually' below
+```
+
+You can *return* anything to let FuncStack handle your result as `statusObj.result` and move it to the _done_ stack,
+or throw an error like `throw new Error('could not compute');` to trigger `.onError()` and move it to the _error_ stack.
+
+
+details
 ```
 signature param: [data]
     property keys: [fnCount, queueMode, funcStackReference, fn]
@@ -79,15 +110,15 @@ signature param: [data]
                     signature param: [status, result] (same as resolveFn)
 return: any                                         (triggers task as proccessed -> stack: done)
 throw: error                                        (triggers task as proccessed -> stack: error)
-````
+```
 
 ## onProgress statusObj has:
 ```
 .status                  -> ['success', 'error', 'canceled']  -> FuncStack.ENUM_STATUS.*
 .result                  -> anything returned from the fn
 .queueMode               -> the queue mode used for this function
-.data                    -> the _data object with the queues
-.count
+.data                    -> the _data object with the stacks containing the functions {queue, working, done, error}
+.counts
     .start:     _data.startCount
     .left:      _data.working.length + _data.queue.length
     .finished:  _data.done.length    + _data.error.length
@@ -100,14 +131,14 @@ throw: error                                        (triggers task as proccessed
 ```
 options = {
     onCompleted: function defaultHandlerExample(statusObj) {console.log('!! FuncStack: executed all.');},
-    onProgress: function defaultHandlerExample(statusObj, curFn) {console.log('!! FuncStack: progress', arguments);},
-    onStart: function defaultHandlerExample(initialLen, dataObjRef, wasPaused) {},
-    onError: function defaultHandlerExample(statusObj, curFn) {},
-    defaultQueueMode: FuncStack.ENUM_QUEUEMODE.ASYNC, // or defer
+    onProgress:  function defaultHandlerExample(statusObj, curFn) {console.log('!! FuncStack: progress', arguments);},
+    onStart:     function defaultHandlerExample(initialLen, dataObjRef, wasPaused) {},
+    onError:     function defaultHandlerExample(statusObj, curFn) {},
+    defaultQueueMode: FuncStack.ENUM_QUEUEMODE.ASYNC, // or .DEFER
     enforceDefaultQueueMode: false,
-    manualConsume: false,   // if you want to call _consume manually, to work the next block of functions
+    manualConsume: false,                             // if you want to call _consume manually, to work the next block of functions (honouring async and defer) - e.g. for building an interator
     addMode: FuncStack.ENUM_ADDMODE.BOTTOM,    // add new fns to bottom or top / like a queue or stack
-    debug: false
+    debug:   false
 }
 ```
 
@@ -138,12 +169,12 @@ within the task, you can use `this.value = 'something';` and in onProgress(statu
 
 ## identifying a task in onProgress:
 in onProgress(statusObj, curFn) you can:
-- `curFn.name == 'abc'
+- `curFn.name == 'abc'`
 - `this.get(curFn).id` -> .stack and more
 
 
 ## let the task check its own status for 'canceled' and paused:
-within your timed function, you way use `myFuncStack.get(this).stack == FuncStack.ENUM_STATE.CANCELED` to check,
+within your async function, you may use `myFuncStack.get(this).stack == FuncStack.ENUM_STATE.CANCELED` to check,
 if it has been moved to the error stack - since it has not returned yet / called done(), there is no other reason
 
 also: you could check `myFuncStack.isStopped == true` -> that tells, if tasks are currently consumed - but this task
@@ -151,20 +182,27 @@ should finish anyway.
 
 
 ## resolve a ajax based task manually:
-- first of, create your task with 1 param 'fsData':
-    - `var done = fsData.preventDefault();`
-- then call in your ajax success:
+
+if you used `var done = data.preventDefault()` to handle the ending of your task by your self (going the async way),
+`done` will be a `resolveFn(status, result)` method call, which is actually an overloaded `FuncStack.StatusNotificationObject`.
+You have to call it, to trigger the task as proccessed and let FuncStack do its finishing job. Pass a _status_ 
+(`['error', 'success', 'canceled']` in `FuncStack.ENUM_STATUS.*`) and any _result_ you wish. 'error' will trigger `.onError()`.
+
+- first of, create your task with 1 param 'data' (`function(data) {...}`):
+    - `var done = data.preventDefault();`
+
+- then call in your ajax/async success:
     - `done('success');`
 
-- .. which is the short version for:
-    ```
+- .. which is the short version for (in expanded order, all being the same - undefined being no `.result to be returned on the _statusObj_):
+    ```javascript
     done( 'success', undefined )
     done( FuncStack.ENUM_STATUS.SUCCESS, undefined )
     done( new FuncStack.StatusNotificationObject( FuncStack.ENUM_STATUS.SUCCESS, undefined ) )
     ```
 
 - done() has 2 signatures:
-    ```
+    ```javascript
     done( status, optionalResult )
     done( FuncStack.StatusNotificationObject(status, optionalResult) )
     ```
