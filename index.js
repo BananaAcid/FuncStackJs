@@ -10,109 +10,9 @@
  *   Module loading for AMD, CommonJS, Browser.
  *
  * @author  Nabil Redmann <repo+js@bananaacid.de>
- * @version 1.0.0
  * @licence MIT
  *
  * @copyright  use in your own code, but keep the copyright (except you modify it, then reference me)
- *
- * @description
- *   note:
- *
- *   a task function has:
- *      signature param: [data]
- *          property keys: [fnCount, queueMode, funcStackReference, fn]
- *          property methods: [preventDefault()]
- *              preventDefault():                           (using this, return will be stopped and you must call resolveFn(status, result) to trigger task as proccessed -- use for ajax requests)
- *                  returns: resolveFn() 
- *                      signature param: [status, result]   (status ['error', 'success', 'canceled'] in FuncStack.ENUM_STATUS.*)
- *                      signature overloaded: [FuncStack.StatusNotificationObject]
- *                          signature param: [status, result] (same as resolveFn)
- *      return: any                                         (triggers task as proccessed -> stack: done)
- *      throw: error                                        (triggers task as proccessed -> stack: error)
- *
- *
- *   onProgress statusObj has:
- *      .status                  -> ['success', 'error', 'canceled']  -> FuncStack.ENUM_STATUS.*
- *      .result                  -> anything returned from the fn
- *      .queueMode               -> the queue mode used for this function
- *      .data                    -> the _data object with the queues
- *      .count
- *          .start:     _data.startCount
- *          .left:      _data.working.length + _data.queue.length
- *          .finished:  _data.done.length    + _data.error.length
- *          .pending:   _data.queue.length
- *          .working:   _data.working.length
- *          .total:     _internal.fnCount
- *
- *
- *   The options object has:
- *      options = {
- *          onCompleted: function defaultHandlerExample(statusObj) {console.log('!! FuncStack: executed all.');},
- *          onProgress: function defaultHandlerExample(statusObj, curFn) {console.log('!! FuncStack: progress', arguments);},
- *          onStart: function defaultHandlerExample(initialLen, dataObjRef, wasPaused) {},
- *          onError: function defaultHandlerExample(statusObj, curFn) {},
- *          defaultQueueMode: FuncStack.ENUM_QUEUEMODE.ASYNC, // or defer
- *          enforceDefaultQueueMode: false,
- *          manualConsume: false,   // if you want to call _consume manually, to work the next block of functions
- *          addMode: FuncStack.ENUM_ADDMODE.BOTTOM,    // add new fns to bottom or top / like a queue or stack
- *          debug: false
- *      }
- *
- *
- *   .get() returns an object of type `FuncStack.FnInfoObject`:
- *      fn -> the function / task
- *      stack -> the stack name where the task ended in
- *      pos -> the position within the stack
- *      id -> the internal identifier
- *
- *
- *   about async and defer:
- *      async will start them in order as fast as possible without waiting for completion, 
- *      defer will wait for previous defer task or all previous async tasks to start the new one
- *
- *
- *   about returns from fns / results:
- *      these will be passed to onProgress()
- *
- *
- *   checking for tasks in the queues:
- *      either use `var x = theFuncStack.get(id or fn).stack;`
- *      or mess with the internals `theFuncStack._data.*` 
- *
- *
- *   adding values to transport to progress:
- *      within the task, you can use `this.value = 'something';` and in onProgress(statusObj, curFn) use `if (curFn.value) ....`
- *
- *
- *   identifying a task in onProgress:
- *      in onProgress(statusObj, curFn) you can:
- *          `curFn.name == 'abc'
- *          `this.get(curFn).id` or .stack and more
- *
- *
- *   let the task check its own status for 'canceled' and paused:
- *      within your timed function, you way use `myFuncStack.get(this).stack == FuncStack.ENUM_STATE.CANCELED` to check,
- *      if it has been moved to the error stack - since it has not returned yet / called done(), there is no other reason
- *      
- *      also: you could check myFuncStack.isStopped == true -> that tells, if tasks are currently consumed - but this task 
- *      should finish anyway.
- *
- *
- *   resolve a ajax based task manually:
- *      first of, create your task with 1 param 'fsData':
- *          `var done = fsData.preventDefault();`
- *      then call in your ajax success:
- *          `done('success');`
- *
- *      .. which is the short version for:
- *          `done( 'success', undefined )`
- *          `done( FuncStack.ENUM_STATUS.SUCCESS, undefined )`
- *          `done( new FuncStack.StatusNotificationObject( FuncStack.ENUM_STATUS.SUCCESS, undefined ) )`
- *
- *      done() has 2 signatures:
- *          done( status, optionalResult )
- *          done( FuncStack.StatusNotificationObject(status, optionalResult) )
- *
  *
  * NOTE: a factory is not used, because jsDoc has problems with it, but 'use strict' is anyways locking everything in to prevent global space polution
  */
@@ -157,10 +57,10 @@ function FuncStack(optionalOptions, optionalInitialFnsArr) {
      */
     this.options = {
         onCompleted: function defaultHandlerExample(statusObj) {console.log('!! FuncStack: executed all.');},
-        onProgress: function defaultHandlerExample(statusObj, curFn) {console.log('!! FuncStack: progress', arguments);},
-        onStart: function defaultHandlerExample(initialLen, dataObjRef, wasPaused) {},
-        onError: function defaultHandlerExample(statusObj, curFn) {},
-        defaultQueueMode: FuncStack.ENUM_QUEUEMODE.ASYNC, // or defer
+        onProgress:  function defaultHandlerExample(statusObj, curFn) {console.log('!! FuncStack: progress', arguments);},
+        onStart:     function defaultHandlerExample(initialLen, dataObjRef, wasPaused) {},
+        onError:     function defaultHandlerExample(statusObj, curFn) {},
+        defaultQueueMode: FuncStack.ENUM_QUEUEMODE.ASYNC, // or .DEFER
         enforceDefaultQueueMode: false,
         manualConsume: false,   // if you want to call _consume manually, to work the next block of functions
         addMode: FuncStack.ENUM_ADDMODE.BOTTOM,    // add new fns to bottom or top / like a queue or stack
@@ -202,22 +102,34 @@ FuncStack.ENUM_QUEUEMODE = {ASYNC: 'async', DEFER: 'defer'};
  *   (you can set this.x=1 in the fn and in onProgress you can access it)
  *   and the first param referencing current the FuncStack
  *
- * @param {function|array} fn                   the function or an array of functions, to add to the stack
- * @param {FuncStack.ENUM_QUEUEMODE} queueMode  if to call the function async or defer it (sync) (continue if queue is empty) [optional]
+ * @param {function|array<fn>|array<object>} fn  the function or an array of functions, or array of {addMode:bool, fn:function}, to add to the stack
+ * @param {FuncStack.ENUM_QUEUEMODE} queueMode   if to call the function async or defer it (sync) (continue if queue is empty) [optional]
  * @returns {FuncStack}
  */
 FuncStack.prototype.add = function add(fn, queueMode) {
     if (typeof(fn)=='function')
         fn = [fn];
     
-    if (typeof(fn)=='object')
+    else if (Array.isArray(fn))
         for (var i in fn) {
-            fn[i].fnCount = this._internal.fnCount;
-            fn[i].queueMode = (this.options.enforceDefaultQueueMode) ? this.options.defaultQueueMode : (queueMode || this.options.defaultQueueMode);
-            //this._data.queue.unshift(fn[i]); // add on top
-            Array.prototype[(!this.options.addMode) ? 'push' : 'unshift'].call(this._data.queue, fn[i]);
+            var f = fn[i],
+                m = this.options.addMode;
+
+            // it might be an obj {addMode:bool, fn:function}
+            if (!(f instanceof Function)) {
+                m = f.addMode;
+                f = f.fn;
+            }
+
+            f.fnCount = this._internal.fnCount;
+            f.queueMode = (this.options.enforceDefaultQueueMode) ? this.options.defaultQueueMode : (queueMode || this.options.defaultQueueMode);
+            //this._data.queue.unshift(f); // add on top
+            Array.prototype[(!m) ? 'push' : 'unshift'].call(this._data.queue, f);
             this._internal.fnCount++;
         }
+
+    else 
+        throw new Error('add argument must be function, array of funcitons or array of {addMode:bool, fn:function}')
     
     return this; // for chaining
 };
@@ -682,6 +594,17 @@ FuncStack.StatusObject = function StatusObject(statusNotificationObject, queueMo
 };
 
 
+/**
+ * Returns a promise to the current FuncStack and starts it
+ *
+ * @note  could also be a simple `let resultStatusObj = await new Promise(resolve => new FuncStack(resolve, fns).start());`
+ * 
+ * @return Promise  an awaitable promise
+ **/
+FuncStack.prototype.Promise = function FuncStackPromise() {
+    return new Promise(resolve => {this.options.onCompleted = resolve; this.start(); });
+}
+
 
 
 // AMD, CommonJS, Browser
@@ -727,4 +650,15 @@ if (typeof Function.prototype.bind !== "function") {
             };
         };
     };
+}
+
+
+/**
+ * supply missing isArray
+ * @see  https://developer.mozilla.org/docs/Web/JavaScript/Reference/Global_Objects/Array/isArray
+ **/
+if(!Array.isArray) {
+  Array.isArray = function (vArg) {
+    return Object.prototype.toString.call(vArg) === "[object Array]";
+  };
 }
